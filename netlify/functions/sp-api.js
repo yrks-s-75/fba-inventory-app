@@ -13,8 +13,11 @@ async function getLWAToken() {
       client_secret: process.env.SP_API_CLIENT_SECRET,
     }),
   });
-  if (!res.ok) throw new Error(`LWA token error: ${res.status}`);
   const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    throw new Error(`LWA token error: ${res.status} body=${JSON.stringify(data)}`);
+  }
+  console.log("LWA token OK, prefix:", data.access_token.substring(0, 20));
   return data.access_token;
 }
 
