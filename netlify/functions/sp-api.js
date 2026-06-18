@@ -44,7 +44,70 @@ async function spPost(path, token, body) {
   return res.json();
 }
 
-// FBA在庫をReports API経由で取得
+// Orders APIで直近N日の注文取得
+async function getOrdersByDays(days, token) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const params = new URLSearchParams({
+    MarketplaceIds: MARKETPLACE_ID,
+    CreatedAfter: since.toISOString(),
+    OrderStatuses: "Shipped,Unshipped,PartiallyShipped,Canceled",
+  });
+
+  let orders = [];
+  let nextToken = null;
+  let page = 0;
+  do {
+    const url = nextToken
+      ? `/orders/v0/orders?NextToken=${encodeURIComponent(nextToken)}`
+      : `/orders/v0/orders?${params}`;
+    const data = await spGet(url, token);
+    orders = orders.concat(data.payload?.Orders ?? []);
+    nextToken = data.payload?.NextToken ?? null;
+    page++;
+  } while (nextToken && page < 10);
+  return orders;
+}
+
+// Orders APIからSKU別販売数を集計
+async function getSalesFromOrders(token) {
+  const [orders90] = await Promise.all([getOrdersByDays(90, token)]);
+
+  // 各注文のアイテムを取得
+  const skuSales = {};
+  const skuInfo = {};
+
+  await Promise.all(
+    orders90.map(async (order) => {
+      try {
+        const itemData = await spGet(`/orders/v0/orders/${order.AmazonOrderId}/orderItems`, token);
+        const items = itemData.payload?.OrderItems ?? [];
+        const orderDate = new Date(order.PurchaseDate);
+        const daysAgo = (Date.now() - orderDate.getTime()) / 86400000;
+
+        for (const item of items) {
+          const sku = item.SellerSKU;
+          if (!sku) continue;
+          if (!skuSales[sku]) {
+            skuSales[sku] = { units7: 0, units30: 0, units90: 0, sales30: 0 };
+          }
+          if (!skuInfo[sku]) {
+            skuInfo[sku] = { asin: item.ASIN, productName: item.Title ?? sku };
+          }
+          const qty = parseInt(item.QuantityOrdered) || 0;
+          const amount = parseFloat(item.ItemPrice?.Amount ?? "0") * qty;
+          skuSales[sku].units90 += qty;
+          if (daysAgo <= 30) { skuSales[sku].units30 += qty; skuSales[sku].sales30 += amount; }
+          if (daysAgo <= 7) skuSales[sku].units7 += qty;
+        }
+      } catch { /* skip failed orders */ }
+    })
+  );
+
+  return { skuSales, skuInfo };
+}
+
+// FBA在庫をReports API経由で取得（未使用・保留）
 async function getFBAInventoryViaReport(token) {
   // レポートリクエスト作成
   const created = await spPost("/reports/2021-06-30/reports", token, {
@@ -128,48 +191,40 @@ function calcABC(items) {
 export const handler = async () => {
   try {
     const token = await getLWAToken();
-    const inventories = await getFBAInventoryViaReport(token);
+    const { skuSales, skuInfo } = await getSalesFromOrders(token);
 
-    if (!inventories.length) {
+    const skus = Object.keys(skuSales);
+    if (!skus.length) {
       return { statusCode: 200, body: JSON.stringify({ items: [] }) };
     }
 
-    const items = await Promise.all(
-      inventories.map(async (inv) => {
-        const [s7, s30, s90] = await Promise.all([
-          getSalesMetrics(inv.asin, 7, token),
-          getSalesMetrics(inv.asin, 30, token),
-          getSalesMetrics(inv.asin, 90, token),
-        ]);
+    const items = skus.map((sku) => {
+      const s = skuSales[sku];
+      const info = skuInfo[sku] ?? { asin: "", productName: sku };
+      const dailySales30 = s.units30 / 30;
+      // 現在庫はSP-API未取得のため0（ダッシュボードで手入力可能）
+      const currentQty = 0;
+      const stockDays = 999;
+      const reorderPoint = Math.round(dailySales30 * 21);
+      const trend = s.units7 / 7 > dailySales30 * 1.3 ? "rising" : "stable";
 
-        const dailySales30 = s30.units / 30;
-        const stockDays = dailySales30 > 0 ? Math.round(inv.currentQty / dailySales30) : 999;
-        const reorderPoint = Math.round(dailySales30 * 21);
-        const trend = s7.units / 7 > dailySales30 * 1.3 ? "rising" : "stable";
-
-        let orderStatus = "OK";
-        if (inv.currentQty <= reorderPoint) orderStatus = "発注注意";
-        else if (stockDays < 30) orderStatus = "要分析";
-
-        return {
-          sku: inv.sku,
-          fnSku: inv.fnSku,
-          asin: inv.asin,
-          productName: inv.productName || inv.sku,
-          currentQty: inv.currentQty,
-          units7: s7.units,
-          units30: s30.units,
-          units90: s90.units,
-          sales30: s30.sales,
-          dailySales: parseFloat(dailySales30.toFixed(1)),
-          stockDays,
-          reorderPoint,
-          trend,
-          orderStatus,
-          group: "C",
-        };
-      })
-    );
+      return {
+        sku,
+        asin: info.asin,
+        productName: info.productName,
+        currentQty,
+        units7: s.units7,
+        units30: s.units30,
+        units90: s.units90,
+        sales30: s.sales30,
+        dailySales: parseFloat(dailySales30.toFixed(1)),
+        stockDays,
+        reorderPoint,
+        trend,
+        orderStatus: "要確認",
+        group: "C",
+      };
+    });
 
     items.sort((a, b) => b.sales30 - a.sales30);
     const classified = calcABC(items);
