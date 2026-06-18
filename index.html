@@ -210,8 +210,8 @@ async function loadData() {
 
   try {
     const res = await fetch('/.netlify/functions/sp-api');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
     if (json.error) throw new Error(json.error);
 
     allItems = json.items ?? [];
