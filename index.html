@@ -258,8 +258,6 @@ async function loadData() {
       document.getElementById('updatedAt').textContent = `最終更新: セラーセントラルデータ（2026/06/19）`;
     }
     allItems = items;
-    const jst = new Date(json.updatedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-    document.getElementById('updatedAt').textContent = `最終更新: ${jst}`;
     updateSummary();
     renderTable();
   } catch (e) {
