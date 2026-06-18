@@ -44,14 +44,28 @@ async function spPost(path, token, body) {
   return res.json();
 }
 
-// Orders APIで直近N日の注文取得
+async function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function pLimit(tasks, concurrency) {
+  const results = [];
+  for (let i = 0; i < tasks.length; i += concurrency) {
+    const batch = tasks.slice(i, i + concurrency);
+    const batchResults = await Promise.all(batch.map((fn) => fn()));
+    results.push(...batchResults);
+    if (i + concurrency < tasks.length) await sleep(500);
+  }
+  return results;
+}
+
 async function getOrdersByDays(days, token) {
   const since = new Date();
   since.setDate(since.getDate() - days);
   const params = new URLSearchParams({
     MarketplaceIds: MARKETPLACE_ID,
     CreatedAfter: since.toISOString(),
-    OrderStatuses: "Shipped,Unshipped,PartiallyShipped,Canceled",
+    OrderStatuses: "Shipped,Unshipped,PartiallyShipped",
   });
 
   let orders = [];
@@ -65,45 +79,46 @@ async function getOrdersByDays(days, token) {
     orders = orders.concat(data.payload?.Orders ?? []);
     nextToken = data.payload?.NextToken ?? null;
     page++;
-  } while (nextToken && page < 10);
+    if (nextToken) await sleep(300);
+  } while (nextToken && page < 5);
   return orders;
 }
 
-// Orders APIからSKU別販売数を集計
 async function getSalesFromOrders(token) {
-  const [orders90] = await Promise.all([getOrdersByDays(90, token)]);
+  const orders90 = await getOrdersByDays(90, token);
+  console.log(`Orders fetched: ${orders90.length}`);
 
-  // 各注文のアイテムを取得
   const skuSales = {};
   const skuInfo = {};
 
-  await Promise.all(
-    orders90.map(async (order) => {
-      try {
-        const itemData = await spGet(`/orders/v0/orders/${order.AmazonOrderId}/orderItems`, token);
-        const items = itemData.payload?.OrderItems ?? [];
-        const orderDate = new Date(order.PurchaseDate);
-        const daysAgo = (Date.now() - orderDate.getTime()) / 86400000;
+  const tasks = orders90.map((order) => async () => {
+    try {
+      const itemData = await spGet(`/orders/v0/orders/${order.AmazonOrderId}/orderItems`, token);
+      const items = itemData.payload?.OrderItems ?? [];
+      const orderDate = new Date(order.PurchaseDate);
+      const daysAgo = (Date.now() - orderDate.getTime()) / 86400000;
 
-        for (const item of items) {
-          const sku = item.SellerSKU;
-          if (!sku) continue;
-          if (!skuSales[sku]) {
-            skuSales[sku] = { units7: 0, units30: 0, units90: 0, sales30: 0 };
-          }
-          if (!skuInfo[sku]) {
-            skuInfo[sku] = { asin: item.ASIN, productName: item.Title ?? sku };
-          }
-          const qty = parseInt(item.QuantityOrdered) || 0;
-          const amount = parseFloat(item.ItemPrice?.Amount ?? "0") * qty;
-          skuSales[sku].units90 += qty;
-          if (daysAgo <= 30) { skuSales[sku].units30 += qty; skuSales[sku].sales30 += amount; }
-          if (daysAgo <= 7) skuSales[sku].units7 += qty;
+      for (const item of items) {
+        const sku = item.SellerSKU;
+        if (!sku) continue;
+        if (!skuSales[sku]) {
+          skuSales[sku] = { units7: 0, units30: 0, units90: 0, sales30: 0 };
         }
-      } catch { /* skip failed orders */ }
-    })
-  );
+        if (!skuInfo[sku]) {
+          skuInfo[sku] = { asin: item.ASIN, productName: item.Title ?? sku };
+        }
+        const qty = parseInt(item.QuantityOrdered) || 0;
+        const amount = parseFloat(item.ItemPrice?.Amount ?? "0") * qty;
+        skuSales[sku].units90 += qty;
+        if (daysAgo <= 30) { skuSales[sku].units30 += qty; skuSales[sku].sales30 += amount; }
+        if (daysAgo <= 7) skuSales[sku].units7 += qty;
+      }
+    } catch (e) {
+      console.warn(`Skip order ${order.AmazonOrderId}: ${e.message}`);
+    }
+  });
 
+  await pLimit(tasks, 5);
   return { skuSales, skuInfo };
 }
 
