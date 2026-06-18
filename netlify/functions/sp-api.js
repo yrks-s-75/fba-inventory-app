@@ -20,15 +20,24 @@ async function getLWAToken() {
   return data.access_token;
 }
 
-async function spGet(path, token) {
-  const res = await fetch(`${SP_API_ENDPOINT}${path}`, {
-    headers: { "x-amz-access-token": token, "Content-Type": "application/json" },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`SP-API ${path} error ${res.status}: ${body}`);
+async function spGet(path, token, retry = 3) {
+  for (let i = 0; i < retry; i++) {
+    const res = await fetch(`${SP_API_ENDPOINT}${path}`, {
+      headers: { "x-amz-access-token": token, "Content-Type": "application/json" },
+    });
+    if (res.status === 429) {
+      const wait = (i + 1) * 3000;
+      console.log(`429 rate limit, waiting ${wait}ms...`);
+      await sleep(wait);
+      continue;
+    }
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`SP-API ${path} error ${res.status}: ${body}`);
+    }
+    return res.json();
   }
-  return res.json();
+  throw new Error(`SP-API ${path}: rate limit exceeded after ${retry} retries`);
 }
 
 async function spPost(path, token, body) {
