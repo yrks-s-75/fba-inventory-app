@@ -8,6 +8,9 @@
 [functions."weekly-report"]
   schedule = "0 23 * * 0"
 
+[functions."sp-api"]
+  timeout = 30
+
 [[headers]]
   for = "/*"
   [headers.values]
