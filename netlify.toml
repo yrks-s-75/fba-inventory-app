@@ -9,7 +9,7 @@
   schedule = "0 23 * * 0"
 
 [functions."sp-api"]
-  timeout = 60
+  timeout = 26
 
 [[headers]]
   for = "/*"
