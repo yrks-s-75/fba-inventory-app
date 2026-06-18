@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amazon FBA 在庫管理</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f5f7; color: #1a1a1a; font-size: 14px; }
+  a { color: inherit; text-decoration: none; }
+
+  .topbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .topbar-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .topbar-title svg { width: 20px; height: 20px; }
+  .topbar-meta { font-size: 12px; color: #6b7280; }
+  .btn { border: 1px solid #d1d5db; background: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s; }
+  .btn:hover { background: #f9fafb; }
+  .btn-primary { background: #1a56db; color: #fff; border-color: #1a56db; }
+  .btn-primary:hover { background: #1648c6; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; padding: 16px 20px; }
+  .card-label { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+  .card-val { font-size: 28px; font-weight: 600; line-height: 1; }
+  .card-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .val-alert { color: #dc2626; }
+  .val-warn { color: #d97706; }
+  .val-ok { color: #16a34a; }
+
+  .section { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; margin-bottom: 20px; overflow: hidden; }
+  .section-head { padding: 14px 20px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+  .section-head h2 { font-size: 14px; font-weight: 600; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 20px; background: #fafafa; border-bottom: 1px solid #f3f4f6; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+  .badge-A { background: #dbeafe; color: #1e40af; }
+  .badge-B { background: #dcfce7; color: #166534; }
+  .badge-C { background: #fef9c3; color: #854d0e; }
+  .badge-alert { background: #fee2e2; color: #991b1b; }
+  .badge-warn { background: #fef3c7; color: #92400e; }
+  .badge-ok { background: #dcfce7; color: #166534; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; background: #f9fafb; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+  thead th.num { text-align: right; }
+  tbody td { padding: 11px 12px; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: #f9fafb; }
+  tbody tr:last-child td { border-bottom: none; }
+  .row-A { background: rgba(219,234,254,0.25); }
+  .row-B { background: rgba(220,252,231,0.2); }
+  .row-C { background: rgba(254,249,195,0.2); }
+  .text-alert { color: #dc2626; font-weight: 600; }
+  .text-warn { color: #d97706; font-weight: 600; }
+  .trend-rising { color: #d97706; font-size: 11px; }
+  .trend-stable { color: #9ca3af; font-size: 11px; }
+
+  .forecast-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #f3f4f6; }
+  .fc-cell { background: #fff; padding: 16px 20px; }
+  .fc-period { font-size: 11px; color: #6b7280; margin-bottom: 6px; font-weight: 500; }
+  .fc-val { font-size: 22px; font-weight: 600; }
+  .fc-unit { font-size: 13px; font-weight: 400; color: #6b7280; }
+  .fc-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+  .empty { padding: 40px; text-align: center; color: #9ca3af; }
+  .error-bar { background: #fee2e2; color: #991b1b; padding: 10px 20px; font-size: 13px; display: none; }
+
+  .spinner { display: none; width: 16px; height: 16px; border: 2px solid #d1d5db; border-top-color: #1a56db; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .sku-detail { padding: 0 20px 16px; border-top: 1px solid #f3f4f6; display: none; }
+  .sku-detail.open { display: block; }
+
+  @media (max-width: 700px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .forecast-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    Amazon FBA 在庫管理
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="topbar-meta" id="updatedAt">—</span>
+    <div class="spinner" id="spinner"></div>
+    <button class="btn btn-primary" id="refreshBtn" onclick="loadData()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      更新
+    </button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="error-bar" id="errorBar"></div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">管理SKU数</div>
+      <div class="card-val" id="totalSku">—</div>
+      <div class="card-sub" id="abcBreakdown">A:— / B:— / C:—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">発注注意</div>
+      <div class="card-val val-alert" id="alertCount">—</div>
+      <div class="card-sub">即時対応が必要</div>
+    </div>
+    <div class="card">
+      <div class="card-label">要分析</div>
+      <div class="card-val val-warn" id="warnCount">—</div>
+      <div class="card-sub">今週中に確認</div>
+    </div>
+    <div class="card">
+      <div class="card-label">正常</div>
+      <div class="card-val val-ok" id="okCount">—</div>
+      <div class="card-sub">問題なし</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>在庫一覧</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="groupFilter" class="btn" style="padding:5px 10px;" onchange="renderTable()">
+          <option value="ALL">全グループ</option>
+          <option value="A">Aグループ</option>
+          <option value="B">Bグループ</option>
+          <option value="C">Cグループ</option>
+        </select>
+        <select id="statusFilter" class="btn" style="padding:5px 10px;" onchange="renderTable()">
+          <option value="ALL">全ステータス</option>
+          <option value="発注注意">発注注意</option>
+          <option value="要分析">要分析</option>
+          <option value="OK">OK</option>
+        </select>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><span class="badge badge-A">A</span> 売上上位70% — 優先管理</div>
+      <div class="legend-item"><span class="badge badge-B">B</span> 売上70〜90% — 標準管理</div>
+      <div class="legend-item"><span class="badge badge-C">C</span> 売上下位10% — スリム管理</div>
+      <div class="legend-item" style="margin-left:auto;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg> 7日販売が30日平均×1.3倍超 = 急増トレンド</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:60px;">G</th>
+            <th style="min-width:140px;">商品名</th>
+            <th class="num" style="width:80px;">現在庫</th>
+            <th class="num" style="width:70px;">7日販売</th>
+            <th class="num" style="width:75px;">30日販売</th>
+            <th class="num" style="width:75px;">90日販売</th>
+            <th class="num" style="width:60px;">日販</th>
+            <th class="num" style="width:75px;">在庫日数</th>
+            <th class="num" style="width:70px;">発注点</th>
+            <th style="width:90px;">発注要否</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="10" class="empty">データを読み込み中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="forecastSection" style="display:none;">
+    <div class="section-head">
+      <h2>需要予測 — <span id="forecastSku"></span></h2>
+      <button class="btn" onclick="closeForecast()" style="font-size:12px;">✕ 閉じる</button>
+    </div>
+    <div class="forecast-grid">
+      <div class="fc-cell">
+        <div class="fc-period">直近 7日</div>
+        <div class="fc-val" id="fc7">—<span class="fc-unit"> 個/日</span></div>
+        <div class="fc-sub" id="fc7sub">—</div>
+      </div>
+      <div class="fc-cell">
+        <div class="fc-period">直近 30日 <span style="background:#dbeafe;color:#1e40af;font-size:10px;padding:1px 6px;border-radius:3px;margin-left:4px;">基準</span></div>
+        <div class="fc-val" id="fc30">—<span class="fc-unit"> 個/日</span></div>
+        <div class="fc-sub" id="fc30sub">—</div>
+      </div>
+      <div class="fc-cell">
+        <div class="fc-period">直近 90日</div>
+        <div class="fc-val" id="fc90">—<span class="fc-unit"> 個/日</span></div>
+        <div class="fc-sub" id="fc90sub">長期ベース</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let allItems = [];
+
+async function loadData() {
+  const btn = document.getElementById('refreshBtn');
+  const spinner = document.getElementById('spinner');
+  const errorBar = document.getElementById('errorBar');
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  errorBar.style.display = 'none';
+
+  try {
+    const res = await fetch('/.netlify/functions/sp-api');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+
+    allItems = json.items ?? [];
+    const jst = new Date(json.updatedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+    document.getElementById('updatedAt').textContent = `最終更新: ${jst}`;
+    updateSummary();
+    renderTable();
+  } catch (e) {
+    errorBar.textContent = `エラー: ${e.message}`;
+    errorBar.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+function updateSummary() {
+  const total = allItems.length;
+  const aCount = allItems.filter(i => i.group === 'A').length;
+  const bCount = allItems.filter(i => i.group === 'B').length;
+  const cCount = allItems.filter(i => i.group === 'C').length;
+  const alerts = allItems.filter(i => i.orderStatus === '発注注意').length;
+  const warns = allItems.filter(i => i.orderStatus === '要分析').length;
+  const oks = allItems.filter(i => i.orderStatus === 'OK').length;
+
+  document.getElementById('totalSku').textContent = total;
+  document.getElementById('abcBreakdown').textContent = `A:${aCount} / B:${bCount} / C:${cCount}`;
+  document.getElementById('alertCount').textContent = alerts;
+  document.getElementById('warnCount').textContent = warns;
+  document.getElementById('okCount').textContent = oks;
+}
+
+function renderTable() {
+  const gf = document.getElementById('groupFilter').value;
+  const sf = document.getElementById('statusFilter').value;
+
+  let items = allItems;
+  if (gf !== 'ALL') items = items.filter(i => i.group === gf);
+  if (sf !== 'ALL') items = items.filter(i => i.orderStatus === sf);
+
+  const tbody = document.getElementById('tableBody');
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty">該当する商品がありません</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = items.map(item => {
+    const groupBadge = `<span class="badge badge-${item.group}">${item.group}</span>`;
+    const qtyClass = item.currentQty <= item.reorderPoint ? 'text-alert' : '';
+    const daysClass = item.stockDays < 30 ? 'text-alert' : item.stockDays < 60 ? 'text-warn' : '';
+    const statusBadge =
+      item.orderStatus === '発注注意' ? `<span class="badge badge-alert">発注注意</span>` :
+      item.orderStatus === '要分析'   ? `<span class="badge badge-warn">要分析</span>` :
+                                        `<span class="badge badge-ok">OK</span>`;
+    const trendIcon = item.trend === 'rising'
+      ? `<span class="trend-rising" title="7日販売急増">▲</span>`
+      : `<span class="trend-stable">—</span>`;
+    const daysStr = item.stockDays === 999 ? '—' : item.stockDays;
+
+    return `<tr class="row-${item.group}" onclick="showForecast(${JSON.stringify(item).replace(/"/g,'&quot;')})" style="cursor:pointer;">
+      <td>${groupBadge}</td>
+      <td>${item.productName}<br><span style="font-size:11px;color:#9ca3af;">${item.sku}</span></td>
+      <td class="num ${qtyClass}">${item.currentQty.toLocaleString()}</td>
+      <td class="num">${item.units7} ${trendIcon}</td>
+      <td class="num">${item.units30}</td>
+      <td class="num">${item.units90}</td>
+      <td class="num">${item.dailySales}</td>
+      <td class="num ${daysClass}">${daysStr}</td>
+      <td class="num">${item.reorderPoint}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+function showForecast(item) {
+  document.getElementById('forecastSection').style.display = 'block';
+  document.getElementById('forecastSku').textContent = item.productName;
+
+  const d7 = (item.units7 / 7).toFixed(1);
+  const d30 = item.dailySales;
+  const d90 = (item.units90 / 90).toFixed(1);
+
+  document.getElementById('fc7').innerHTML = `${d7}<span class="fc-unit"> 個/日</span>`;
+  document.getElementById('fc30').innerHTML = `${d30}<span class="fc-unit"> 個/日</span>`;
+  document.getElementById('fc90').innerHTML = `${d90}<span class="fc-unit"> 個/日</span>`;
+
+  const trend7vs30 = item.units7 / 7 > item.dailySales * 1.3
+    ? '⚠️ 直近7日に急増中' : '安定推移';
+  document.getElementById('fc7sub').textContent = trend7vs30;
+  document.getElementById('fc30sub').textContent = `在庫日数 ${item.stockDays === 999 ? '—' : item.stockDays + '日'}（基準値）`;
+
+  document.getElementById('forecastSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeForecast() {
+  document.getElementById('forecastSection').style.display = 'none';
+}
+
+loadData();
+</script>
+</body>
+</html>
