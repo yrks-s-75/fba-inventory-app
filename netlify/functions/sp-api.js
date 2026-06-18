@@ -36,6 +36,10 @@ async function spGet(path, token) {
 }
 
 async function getFBAInventory(token) {
+  // Test auth with sellers endpoint first
+  const sellers = await spGet(`/sellers/v1/marketplaceParticipations`, token);
+  console.log("sellers API:", JSON.stringify(sellers).substring(0, 200));
+
   const data = await spGet(
     `/fba/inventory/v1/summaries?details=true&granularityType=Marketplace&granularityId=${MARKETPLACE_ID}&marketplaceIds=${MARKETPLACE_ID}`,
     token
