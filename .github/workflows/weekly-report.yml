@@ -1,0 +1,30 @@
+name: FBA週次在庫レポート
+
+on:
+  schedule:
+    - cron: "0 23 * * 0"  # 毎週月曜 8:00 JST
+  workflow_dispatch:        # 手動実行ボタン
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm install
+
+      - name: 週次レポート送信
+        env:
+          SP_API_CLIENT_ID: ${{ secrets.SP_API_CLIENT_ID }}
+          SP_API_CLIENT_SECRET: ${{ secrets.SP_API_CLIENT_SECRET }}
+          SP_API_REFRESH_TOKEN: ${{ secrets.SP_API_REFRESH_TOKEN }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REPORT_EMAIL: ${{ secrets.REPORT_EMAIL }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+        run: node scripts/weekly-report.mjs
