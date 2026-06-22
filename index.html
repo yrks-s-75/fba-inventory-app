@@ -203,21 +203,21 @@ let allItems = [];
 // セラーセントラルから取得した実データ（APIバックアップ用）
 const STATIC_ITEMS = (function() {
   const raw = [
-    {sku:"2B-R4J2-DB16", asin:"B0F4DXKNNS", productName:"サッカーボード 作戦ボード ペン3本付き【B al H】", currentQty:106, units30:180, sales30:308979},
-    {sku:"RW-ZCFD-AFSD", asin:"B0GF1TXYPR", productName:"バスケ 作戦ボード バスケットボール バスケ用品【B al H】", currentQty:118, units30:73, sales30:107741},
-    {sku:"SM-YYPM-CABW", asin:"B0GWN2TQQK", productName:"野球 グローブ 手入れ グラブケアセット【B al H】", currentQty:17, units30:12, sales30:29618},
-    {sku:"VJ-BZ7Z-APVY", asin:"B0GWMSX9R9", productName:"靴底 滑り止め スパイク スパイクピン24本入り【B al H】", currentQty:21, units30:8, sales30:12576},
-    {sku:"basukeGshi",   asin:"B0GQQ2TH8K", productName:"バスケットゴールネット 5mm幅 2枚セット (ホワイト)【B al H】", currentQty:0, units30:5, sales30:5120},
-    {sku:"basukeGshiakao", asin:"B0GQQJ4HC4", productName:"バスケットゴールネット 5mm幅 2枚セット (ホワイト&レッド&ブルー)【B al H】", currentQty:19, units30:3, sales30:3940},
-    {sku:"basukeGshia", asin:"B0GQQFFPP1", productName:"バスケットゴールネット 5mm幅 2枚セット (ホワイト&レッド)【B al H】", currentQty:12, units30:1, sales30:1267},
-    {sku:"UH-ZYXS-QW3W", asin:"B0DZHY1KM7", productName:"けんけんぱリング 小学生 フープ ケンケンパリング【B al H】", currentQty:0, units30:0, sales30:0},
-    {sku:"0M-UMU7-OVOI", asin:"B0FNDJJSPB", productName:"サッカーボール 2号 室内 幼児 空気入れ 収納ネットつき【B al H】", currentQty:0, units30:0, sales30:0},
-    {sku:"HV-9WXA-OD9M", asin:"B0DRKJNT21", productName:"サッカーマット 室内練習 トレーニング 収納袋つき【B al H】", currentQty:0, units30:0, sales30:0},
-    {sku:"AF-J5ZO-QFJL", asin:"B0GF1NT155", productName:"ジャベリックスロー 野球 トレーニング【B al H】", currentQty:0, units30:0, sales30:0},
-    {sku:"NU-76AM-VM35", asin:"B0FWKMCT4J", productName:"マッサージボール ピラティス ウェーブケアボール【B al H】", currentQty:0, units30:0, sales30:0},
-    {sku:"EC-YIK7-U7E3", asin:"B0H4J5JS7H", productName:"リトミックスカーフ シフォンスカーフ オーガンジー【B al H】", currentQty:0, units30:0, sales30:0},
-    {sku:"JY-I60I-7UAH", asin:"B0F48WJW5H", productName:"指サポーター ばね指 手 指 親指対応【B al H】", currentQty:0, units30:0, sales30:0},
-    {sku:"KC-X12P-MQDG", asin:"B0H4J7VHNN", productName:"膝あて 膝パッド ひざあてパッド 作業用 2個セット【B al H】", currentQty:0, units30:0, sales30:0},
+    {sku:"2B-R4J2-DB16",  asin:"B0F4DXKNNS", productName:"サッカーボード 作戦ボード ペン3本付き【B al H】",                   currentQty:89,  units30:181, sales30:305863},
+    {sku:"RW-ZCFD-AFSD",  asin:"B0GF1TXYPR", productName:"バスケ 作戦ボード バスケットボール バスケ用品【B al H】",            currentQty:107, units30:78,  sales30:122199},
+    {sku:"SM-YYPM-CABW",  asin:"B0GWN2TQQK", productName:"野球 グローブ 手入れ グラブケアセット【B al H】",                   currentQty:13,  units30:13,  sales30:28678},
+    {sku:"VJ-BZ7Z-APVY",  asin:"B0GWMSX9R9", productName:"靴底 滑り止め スパイク スパイクピン24本入り【B al H】",             currentQty:20,  units30:9,   sales30:12140},
+    {sku:"basukeGshi",    asin:"B0GQQ2TH8K", productName:"バスケットゴールネット 5mm幅 2枚セット (ホワイト)【B al H】",        currentQty:0,   units30:4,   sales30:3840},
+    {sku:"basukeGshiakao",asin:"B0GQQJ4HC4", productName:"バスケットゴールネット 5mm幅 2枚セット (ホワイト&レッド&ブルー)【B al H】", currentQty:19, units30:2, sales30:3940},
+    {sku:"basukeGshia",   asin:"B0GQQFFPP1", productName:"バスケットゴールネット 5mm幅 2枚セット (ホワイト&レッド)【B al H】", currentQty:12,  units30:0,   sales30:0},
+    {sku:"UH-ZYXS-QW3W", asin:"B0DZHY1KM7", productName:"けんけんぱリング 小学生 フープ ケンケンパリング【B al H】",           currentQty:0,   units30:0,   sales30:0},
+    {sku:"0M-UMU7-OVOI",  asin:"B0FNDJJSPB", productName:"サッカーボール 2号 室内 幼児 空気入れ 収納ネットつき【B al H】",     currentQty:0,   units30:0,   sales30:0},
+    {sku:"HV-9WXA-OD9M",  asin:"B0DRKJNT21", productName:"サッカーマット 室内練習 トレーニング 収納袋つき【B al H】",          currentQty:0,   units30:0,   sales30:0},
+    {sku:"AF-J5ZO-QFJL",  asin:"B0GF1NT155", productName:"ジャベリックスロー 野球 トレーニング【B al H】",                    currentQty:0,   units30:0,   sales30:0},
+    {sku:"NU-76AM-VM35",  asin:"B0FWKMCT4J", productName:"マッサージボール ピラティス ウェーブケアボール【B al H】",           currentQty:0,   units30:0,   sales30:0},
+    {sku:"EC-YIK7-U7E3",  asin:"B0H4J5JS7H", productName:"リトミックスカーフ シフォンスカーフ オーガンジー【B al H】",        currentQty:0,   units30:0,   sales30:0},
+    {sku:"JY-I60I-7UAH",  asin:"B0F48WJW5H", productName:"指サポーター ばね指 手 指 親指対応【B al H】",                     currentQty:0,   units30:0,   sales30:0},
+    {sku:"KC-X12P-MQDG",  asin:"B0H4J7VHNN", productName:"膝あて 膝パッド ひざあてパッド 作業用 2個セット【B al H】",         currentQty:0,   units30:0,   sales30:0},
   ];
   raw.sort((a, b) => b.sales30 - a.sales30);
   const total = raw.reduce((s, i) => s + i.sales30, 0);
@@ -255,7 +255,7 @@ async function loadData() {
     if (!items) {
       // APIが利用できない場合はセラーセントラル取得データを使用
       items = STATIC_ITEMS;
-      document.getElementById('updatedAt').textContent = `最終更新: セラーセントラルデータ（2026/06/19）`;
+      document.getElementById('updatedAt').textContent = `最終更新: セラーセントラルデータ（2026/06/22）`;
     }
     allItems = items;
     updateSummary();
