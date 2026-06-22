@@ -30,13 +30,63 @@ async function spGet(path, token) {
   return res.json();
 }
 
+async function spPost(path, token, body) {
+  const res = await fetch(`${SP_API_ENDPOINT}${path}`, {
+    method: "POST",
+    headers: { "x-amz-access-token": token, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+async function waitForReport(reportId, token) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 10000));
+    const data = await spGet(`/reports/2021-06-30/reports/${reportId}`, token);
+    console.log(`レポート状態: ${data.processingStatus}`);
+    if (data.processingStatus === "DONE") return data.reportDocumentId;
+    if (data.processingStatus === "FATAL" || data.processingStatus === "CANCELLED") {
+      throw new Error("レポート生成失敗: " + data.processingStatus);
+    }
+  }
+  throw new Error("レポートタイムアウト");
+}
+
 async function getFBAInventory(token) {
-  const data = await spGet(
-    `/fba/inventory/v1/summaries?details=true&granularityType=Marketplace&granularityId=${MARKETPLACE_ID}&marketplaceIds=${MARKETPLACE_ID}`,
-    token
-  );
-  console.log("FBA在庫APIレスポンス:", JSON.stringify(data).slice(0, 500));
-  return data.payload?.inventorySummaries ?? [];
+  // FBA在庫レポート（GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA）を使用
+  const created = await spPost("/reports/2021-06-30/reports", token, {
+    reportType: "GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA",
+    marketplaceIds: [MARKETPLACE_ID],
+  });
+  console.log("レポート作成:", JSON.stringify(created));
+  const reportId = created.reportId;
+  if (!reportId) throw new Error("レポートID取得失敗: " + JSON.stringify(created));
+
+  const documentId = await waitForReport(reportId, token);
+  const docData = await spGet(`/reports/2021-06-30/documents/${documentId}`, token);
+  const csvRes = await fetch(docData.url);
+  const csv = await csvRes.text();
+  console.log("CSV先頭:", csv.slice(0, 300));
+
+  // CSVをパース（タブ区切り）
+  const lines = csv.trim().split("\n");
+  const headers = lines[0].split("\t");
+  const skuIdx = headers.findIndex((h) => h.toLowerCase().includes("sku"));
+  const asinIdx = headers.findIndex((h) => h.toLowerCase().includes("asin"));
+  const nameIdx = headers.findIndex((h) => h.toLowerCase().includes("product-name") || h.toLowerCase().includes("product name"));
+  const qtyIdx = headers.findIndex((h) => h.toLowerCase().includes("afn-fulfillable-quantity") || h.toLowerCase().includes("fulfillable"));
+
+  console.log(`列インデックス: SKU=${skuIdx}, ASIN=${asinIdx}, 名前=${nameIdx}, 数量=${qtyIdx}`);
+
+  return lines.slice(1).filter((l) => l.trim()).map((line) => {
+    const cols = line.split("\t");
+    return {
+      sellerSku: cols[skuIdx] ?? "",
+      asin: cols[asinIdx] ?? "",
+      productName: cols[nameIdx] ?? cols[skuIdx] ?? "",
+      inventoryDetails: { fulfillableQuantity: parseInt(cols[qtyIdx] ?? "0") || 0, inboundShippedQuantity: 0 },
+    };
+  });
 }
 
 async function getSalesMetrics(asin, days, token) {
