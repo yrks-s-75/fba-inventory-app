@@ -243,6 +243,10 @@ async function main() {
   items.sort((a, b) => b.sales30 - a.sales30);
   const classified = calcABC(items);
 
+  if (classified.length === 0) {
+    console.log("在庫データが0件のためテスト送信を実行します");
+  }
+
   // Googleスプレッドシート更新
   await updateSheet(classified, updatedAt);
 
@@ -252,9 +256,12 @@ async function main() {
     auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
   });
 
+  const toEmail = process.env.REPORT_EMAIL || process.env.GMAIL_USER;
+  if (!toEmail) throw new Error("REPORT_EMAIL または GMAIL_USER が設定されていません");
+
   await transporter.sendMail({
     from: `"FBA在庫管理" <${process.env.GMAIL_USER}>`,
-    to: process.env.REPORT_EMAIL ?? process.env.GMAIL_USER,
+    to: toEmail,
     subject: `【FBA在庫】週次レポート ${new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })}`,
     html: buildEmailHTML(classified, updatedAt),
   });
