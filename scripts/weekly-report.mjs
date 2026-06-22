@@ -35,6 +35,7 @@ async function getFBAInventory(token) {
     `/fba/inventory/v1/summaries?details=true&granularityType=Marketplace&granularityId=${MARKETPLACE_ID}&marketplaceIds=${MARKETPLACE_ID}`,
     token
   );
+  console.log("FBA在庫APIレスポンス:", JSON.stringify(data).slice(0, 500));
   return data.payload?.inventorySummaries ?? [];
 }
 
