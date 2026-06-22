@@ -76,6 +76,7 @@ function buildEmailHTML(items, updatedAt) {
         <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;color:${qtyColor};font-weight:${i.currentQty <= i.reorderPoint ? "600" : "400"};">${i.currentQty.toLocaleString()}</td>
         <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${i.units7}</td>
         <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${i.units30}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${i.units90 ?? "—"}</td>
         <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${i.dailySales}</td>
         <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${i.stockDays === 999 ? "—" : i.stockDays}</td>
         <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${i.reorderPoint}</td>
@@ -120,6 +121,7 @@ function buildEmailHTML(items, updatedAt) {
         <th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">現在庫</th>
         <th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">7日販売</th>
         <th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">30日販売</th>
+        <th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">90日販売</th>
         <th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">日販</th>
         <th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">在庫日数</th>
         <th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">発注点</th>
@@ -149,9 +151,10 @@ export const handler = async () => {
           (inv.inventoryDetails?.fulfillableQuantity ?? 0) +
           (inv.inventoryDetails?.inboundShippedQuantity ?? 0);
 
-        const [s7, s30] = await Promise.all([
+        const [s7, s30, s90] = await Promise.all([
           getSalesMetrics(asin, 7, token),
           getSalesMetrics(asin, 30, token),
+          getSalesMetrics(asin, 90, token),
         ]);
 
         const dailySales30 = s30.units / 30;
@@ -164,9 +167,11 @@ export const handler = async () => {
 
         return {
           sku, asin, productName, currentQty,
-          units7: s7.units, units30: s30.units,
+          units7: s7.units, units30: s30.units, units90: s90.units,
           sales30: s30.sales,
           dailySales: parseFloat(dailySales30.toFixed(1)),
+          dailySales7: parseFloat((s7.units / 7).toFixed(1)),
+          dailySales90: parseFloat((s90.units / 90).toFixed(1)),
           stockDays, reorderPoint, orderStatus, group: "C",
         };
       })

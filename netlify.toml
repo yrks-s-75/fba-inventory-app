@@ -5,8 +5,16 @@
 [functions]
   node_bundler = "esbuild"
 
+# 週次レポート: 毎週月曜 8:00 JST（= 日曜 23:00 UTC）に自動送信
 [functions."weekly-report"]
   schedule = "0 23 * * 0"
+  timeout = 26
+
+# 在庫切れアラート: cron未登録（手動実行用）。毎日通知に切り替える場合は
+# 下記 schedule のコメントを外す（例: 毎朝8:00 JST = 23:00 UTC）
+[functions."daily-alert"]
+  # schedule = "0 23 * * *"
+  timeout = 26
 
 [functions."sp-api"]
   timeout = 26

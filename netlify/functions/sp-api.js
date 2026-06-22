@@ -185,6 +185,14 @@ function parseFBAInventoryTSV(text) {
   }).filter((item) => item.sku && item.asin);
 }
 
+async function getFBAInventory(token) {
+  const data = await spGet(
+    `/fba/inventory/v1/summaries?details=true&granularityType=Marketplace&granularityId=${MARKETPLACE_ID}&marketplaceIds=${MARKETPLACE_ID}`,
+    token
+  );
+  return data.payload?.inventorySummaries ?? [];
+}
+
 async function getSalesMetrics(asin, days, token) {
   const end = new Date();
   const start = new Date();
@@ -215,7 +223,17 @@ function calcABC(items) {
 export const handler = async () => {
   try {
     const token = await getLWAToken();
-    const { skuSales, skuInfo } = await getSalesFromOrders(token);
+    const [{ skuSales, skuInfo }, inventories] = await Promise.all([
+      getSalesFromOrders(token),
+      getFBAInventory(token),
+    ]);
+
+    // FBA在庫をSKUでマップ化
+    const fbaQtyBySku = {};
+    for (const inv of inventories) {
+      fbaQtyBySku[inv.sellerSku] = (inv.inventoryDetails?.fulfillableQuantity ?? 0) +
+        (inv.inventoryDetails?.inboundShippedQuantity ?? 0);
+    }
 
     const skus = Object.keys(skuSales);
     if (!skus.length) {
@@ -226,11 +244,11 @@ export const handler = async () => {
       const s = skuSales[sku];
       const info = skuInfo[sku] ?? { asin: "", productName: sku };
       const dailySales30 = s.units30 / 30;
-      // 現在庫はSP-API未取得のため0（ダッシュボードで手入力可能）
-      const currentQty = 0;
-      const stockDays = 999;
+      const currentQty = fbaQtyBySku[sku] ?? 0;
+      const stockDays = dailySales30 > 0 ? Math.round(currentQty / dailySales30) : 999;
       const reorderPoint = Math.round(dailySales30 * 21);
       const trend = s.units7 / 7 > dailySales30 * 1.3 ? "rising" : "stable";
+      const orderStatus = currentQty <= reorderPoint ? "発注注意" : stockDays < 30 ? "要分析" : "OK";
 
       return {
         sku,
@@ -245,7 +263,7 @@ export const handler = async () => {
         stockDays,
         reorderPoint,
         trend,
-        orderStatus: "要確認",
+        orderStatus,
         group: "C",
       };
     });
