@@ -1,0 +1,42 @@
+name: ASINテスト
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: ASINテスト
+        env:
+          SP_API_CLIENT_ID: ${{ secrets.SP_API_CLIENT_ID }}
+          SP_API_CLIENT_SECRET: ${{ secrets.SP_API_CLIENT_SECRET }}
+          SP_API_REFRESH_TOKEN: ${{ secrets.SP_API_REFRESH_TOKEN }}
+        run: |
+          node --input-type=module << 'EOF'
+          const MARKETPLACE_ID = "A1VC38T7YXB528";
+          const SP_API_ENDPOINT = "https://sellingpartnerapi-fe.amazon.com";
+          const LWA_TOKEN_URL = "https://api.amazon.com/auth/o2/token";
+
+          const res = await fetch(LWA_TOKEN_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              grant_type: "refresh_token",
+              refresh_token: process.env.SP_API_REFRESH_TOKEN,
+              client_id: process.env.SP_API_CLIENT_ID,
+              client_secret: process.env.SP_API_CLIENT_SECRET,
+            }),
+          });
+          const { access_token } = await res.json();
+
+          const inv = await fetch(`${SP_API_ENDPOINT}/fba/inventory/v1/summaries?details=true&granularityType=Marketplace&granularityId=${MARKETPLACE_ID}&marketplaceIds=${MARKETPLACE_ID}&asins=B0F4DXKNNS`, {
+            headers: { "x-amz-access-token": access_token }
+          });
+          const data = await inv.json();
+          console.log(JSON.stringify(data, null, 2));
+          EOF
