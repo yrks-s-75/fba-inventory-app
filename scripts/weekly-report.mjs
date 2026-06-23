@@ -37,7 +37,8 @@ async function getFBAInventory(token) {
   );
   const all = data.payload?.inventorySummaries ?? [];
   // アクティブな商品のみ（販売可能・輸送中・予約済みを含む）
-  const active = all.filter((inv) => (inv.totalQuantity ?? 0) > 0);
+  // 全商品を返す（在庫0含む）
+  const active = all;
   console.log(`在庫取得: 全${all.length}件 → アクティブ${active.length}件`);
   return active;
 }
