@@ -35,8 +35,15 @@ async function getFBAInventory(token) {
     `/fba/inventory/v1/summaries?details=true&granularityType=Marketplace&granularityId=${MARKETPLACE_ID}&marketplaceIds=${MARKETPLACE_ID}`,
     token
   );
-  console.log("FBA在庫APIレスポンス:", JSON.stringify(data).slice(0, 500));
-  return data.payload?.inventorySummaries ?? [];
+  const all = data.payload?.inventorySummaries ?? [];
+  // 現在庫が1以上の商品のみ返す
+  const active = all.filter((inv) => {
+    const qty = (inv.inventoryDetails?.fulfillableQuantity ?? 0) +
+                (inv.inventoryDetails?.inboundShippedQuantity ?? 0);
+    return qty > 0;
+  });
+  console.log(`在庫取得: 全${all.length}件 → 在庫あり${active.length}件`);
+  return active;
 }
 
 async function getSalesMetrics(asin, days, token) {
