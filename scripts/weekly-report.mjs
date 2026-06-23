@@ -36,13 +36,9 @@ async function getFBAInventory(token) {
     token
   );
   const all = data.payload?.inventorySummaries ?? [];
-  // 現在庫が1以上の商品のみ返す
-  const active = all.filter((inv) => {
-    const qty = (inv.inventoryDetails?.fulfillableQuantity ?? 0) +
-                (inv.inventoryDetails?.inboundShippedQuantity ?? 0);
-    return qty > 0;
-  });
-  console.log(`在庫取得: 全${all.length}件 → 在庫あり${active.length}件`);
+  // アクティブな商品のみ（販売可能・輸送中・予約済みを含む）
+  const active = all.filter((inv) => (inv.totalQuantity ?? 0) > 0);
+  console.log(`在庫取得: 全${all.length}件 → アクティブ${active.length}件`);
   return active;
 }
 
@@ -218,9 +214,7 @@ async function main() {
       const asin = inv.asin;
       const sku = inv.sellerSku;
       const productName = inv.productName ?? sku;
-      const currentQty =
-        (inv.inventoryDetails?.fulfillableQuantity ?? 0) +
-        (inv.inventoryDetails?.inboundShippedQuantity ?? 0);
+      const currentQty = inv.totalQuantity ?? 0;
 
       const [s7, s30, s90] = await Promise.all([
         getSalesMetrics(asin, 7, token),
